@@ -1,6 +1,6 @@
 /** Deployed RestaurantContract on Stellar Testnet — update after deploy */
 export const CONTRACT_ID =
-  import.meta.env.VITE_CONTRACT_ID || 'CAU7C5C4SJDGXVXRTXNDZ3WUTW7Z5Y47MXAEQHHDYOBLHNDHXV4ENEW7'; 
+  import.meta.env.VITE_CONTRACT_ID || 'CAU7C5C4SJDGXVXRTXNDZ3WUTW7Z5Y47MXAEQHHDYOBLHNDHXV4ENEW7'; // Maintaining the current one but ensuring env is clean
 
 /** Example tx hash from contract interaction (testnet) */
 export const EXAMPLE_TX_HASH =
@@ -19,7 +19,7 @@ export const RPC_URL =
 export const HORIZON_URL =
   import.meta.env.VITE_HORIZON_URL || 'https://horizon-testnet.stellar.org';
 
-/** Native XLM Stellar Asset Contract on testnet — update if needed */
+/** Native XLM Stellar Asset Contract on testnet */
 export const DEFAULT_TOKEN =
   import.meta.env.VITE_TOKEN_ADDRESS ||
   'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
