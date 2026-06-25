@@ -5,8 +5,10 @@ import WalletConnect from '../components/WalletConnect.jsx';
 
 vi.mock('@stellar/freighter-api', () => ({
   isConnected: vi.fn().mockResolvedValue(true),
-  getAddress: vi.fn().mockResolvedValue(null),
-  setAllowed: vi.fn().mockResolvedValue(undefined),
+  isAllowed: vi.fn().mockResolvedValue(false),
+  setAllowed: vi.fn().mockResolvedValue(true),
+  getPublicKey: vi.fn().mockResolvedValue(''),
+  requestAccess: vi.fn().mockResolvedValue(''),
   signTransaction: vi.fn(),
 }));
 

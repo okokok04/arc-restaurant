@@ -1,11 +1,12 @@
 import { useState, useCallback } from 'react';
 import {
   isConnected,
-  getAddress,
+  requestAccess,
+  getPublicKey,
+  isAllowed,
   setAllowed,
   signTransaction as freighterSign,
 } from '@stellar/freighter-api';
-import { NETWORK_PASSPHRASE } from '../lib/contract.js';
 
 export function useWallet() {
   const [publicKey, setPublicKey] = useState(null);
@@ -23,11 +24,20 @@ export function useWallet() {
         );
       }
 
-      await setAllowed({ allowed: true, networkPassphrase: NETWORK_PASSPHRASE });
-      const address = await getAddress();
-      if (!address) {
-        throw new Error('Could not retrieve wallet address');
+      const allowed = await isAllowed();
+      if (!allowed) {
+        await setAllowed();
       }
+
+      let address = await getPublicKey();
+      if (!address) {
+        address = await requestAccess();
+      }
+
+      if (!address) {
+        throw new Error('Wallet connection was cancelled or no address returned');
+      }
+
       setPublicKey(address);
       return address;
     } catch (err) {
@@ -46,6 +56,9 @@ export function useWallet() {
 
   const signTransaction = useCallback(async (xdr, opts) => {
     const signed = await freighterSign(xdr, opts);
+    if (!signed) {
+      throw new Error('Transaction signing was cancelled');
+    }
     if (typeof signed === 'object' && signed.error) {
       throw new Error(signed.error);
     }
