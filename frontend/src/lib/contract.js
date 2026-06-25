@@ -19,8 +19,7 @@ export const RPC_URL =
 export const HORIZON_URL =
   import.meta.env.VITE_HORIZON_URL || 'https://horizon-testnet.stellar.org';
 
-/** Native XLM Stellar Asset Contract on testnet — override via env */
-// Verified Testnet XLM SAC: CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC
+/** Native XLM Stellar Asset Contract on testnet — update if needed */
 export const DEFAULT_TOKEN =
   import.meta.env.VITE_TOKEN_ADDRESS ||
   'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
