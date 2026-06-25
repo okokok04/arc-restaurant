@@ -1,0 +1,10 @@
+# Auto detect text files and normalize line endings
+* text=auto
+
+*.rs text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.sh text eol=lf
