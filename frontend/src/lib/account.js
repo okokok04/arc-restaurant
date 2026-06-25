@@ -5,10 +5,9 @@ export function formatStellarError(err) {
 
   if (/non-existent contract function|MissingValue|does not exist|contract.{0,10}not found/i.test(msg)) {
     return {
-      message:
-        'Contract not found on testnet. The deployed contract may have expired. Please redeploy or contact admin.',
+      message: null, // Don't block the UI with an error, just wait for user to Init
       needsFunding: false,
-      wrongContract: true,
+      wrongContract: false,
     };
   }
 

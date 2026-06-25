@@ -161,10 +161,11 @@ export async function getContractBalance() {
     if (sim.result?.retval) {
       return Number(scValToNative(sim.result.retval));
     }
-  } catch {
-    return null;
+  } catch (err) {
+    console.warn('Could not fetch balance, contract might not be initialized:', err.message);
+    return 0;
   }
-  return null;
+  return 0;
 }
 
 /** Read order count via simulation */
@@ -174,10 +175,11 @@ export async function getOrderCount() {
     if (sim.result?.retval) {
       return Number(scValToNative(sim.result.retval));
     }
-  } catch {
-    return null;
+  } catch (err) {
+    console.warn('Could not fetch order count:', err.message);
+    return 0;
   }
-  return null;
+  return 0;
 }
 
 /**
