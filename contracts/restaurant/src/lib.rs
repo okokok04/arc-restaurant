@@ -1,7 +1,7 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contractevent, contractimpl, contracttype, token, Address, Env, String,
+    contract, contractimpl, contracttype, symbol_short, token, Address, Env, String, Symbol,
 };
 
 #[contracttype]
@@ -13,20 +13,21 @@ pub enum DataKey {
     OrderCount,
 }
 
-#[contractevent]
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PaymentEvent {
-    #[topic]
-    pub customer: Address,
     pub amount: i128,
     pub order_id: u64,
 }
 
-#[contractevent]
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InitializedEvent {
-    #[topic]
-    pub owner: Address,
     pub name: String,
 }
+
+const INIT_EVENT: Symbol = symbol_short!("init");
+const PAY_EVENT: Symbol = symbol_short!("pay");
 
 #[contract]
 pub struct RestaurantContract;
@@ -44,7 +45,8 @@ impl RestaurantContract {
         env.storage().instance().set(&DataKey::Balance, &0i128);
         env.storage().instance().set(&DataKey::OrderCount, &0u64);
 
-        InitializedEvent { owner, name }.publish(&env);
+        env.events()
+            .publish((INIT_EVENT, owner.clone()), InitializedEvent { name });
     }
 
     /// Process a payment from customer to restaurant via token transfer (inter-contract).
@@ -72,12 +74,10 @@ impl RestaurantContract {
         let count: u64 = env.storage().instance().get(&DataKey::OrderCount).unwrap_or(0);
         env.storage().instance().set(&DataKey::OrderCount, &(count + 1));
 
-        PaymentEvent {
-            customer,
-            amount,
-            order_id,
-        }
-        .publish(&env);
+        env.events().publish(
+            (PAY_EVENT, customer.clone()),
+            PaymentEvent { amount, order_id },
+        );
     }
 
     pub fn get_balance(env: Env) -> i128 {
