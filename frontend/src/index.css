@@ -367,6 +367,16 @@ input[type='text']:focus {
   color: #93c5fd;
 }
 
+.funding-banner p {
+  margin-bottom: 0.6rem;
+}
+
+.funding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .tx-hash {
   font-size: 0.8rem;
   color: var(--text-muted);

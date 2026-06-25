@@ -16,6 +16,7 @@ import {
   buildInitArgs,
   buildPayArgs,
 } from './contract.js';
+import { formatStellarError } from './account.js';
 
 const server = new rpc.Server(RPC_URL, { allowHttp: RPC_URL.startsWith('http://') });
 
@@ -73,7 +74,14 @@ export async function simulateContractCall(functionName, args = []) {
  * Build, sign (via Freighter), and submit a contract invocation transaction.
  */
 export async function invokeContract(functionName, args, publicKey, signTransaction) {
-  const account = await server.getAccount(publicKey);
+  let account;
+  try {
+    account = await server.getAccount(publicKey);
+  } catch (err) {
+    const { message } = formatStellarError(err);
+    throw new Error(message);
+  }
+
   const contract = getContract();
   const scArgs = args.map(scValFromSpec);
 
@@ -87,7 +95,8 @@ export async function invokeContract(functionName, args, publicKey, signTransact
 
   const sim = await server.simulateTransaction(tx);
   if (rpc.Api.isSimulationError(sim)) {
-    throw new Error(sim.error || `Simulation failed for ${functionName}`);
+    const { message } = formatStellarError(new Error(sim.error || 'Simulation failed'));
+    throw new Error(message || `Simulation failed for ${functionName}`);
   }
 
   tx = rpc.assembleTransaction(tx, sim).build();

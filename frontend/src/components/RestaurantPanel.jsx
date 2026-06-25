@@ -6,6 +6,12 @@ import {
   getContractBalance,
   getOrderCount,
 } from '../lib/soroban.js';
+import {
+  checkAccountExists,
+  fundTestnetAccount,
+  formatStellarError,
+  friendbotUrl,
+} from '../lib/account.js';
 import { MENU_ITEMS, DEFAULT_TOKEN, CONTRACT_ID } from '../lib/contract.js';
 
 export default function RestaurantPanel() {
@@ -14,16 +20,36 @@ export default function RestaurantPanel() {
   const [balance, setBalance] = useState(null);
   const [orderCount, setOrderCount] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [funding, setFunding] = useState(false);
   const [action, setAction] = useState(null);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
+  const [needsFunding, setNeedsFunding] = useState(false);
   const [lastTxHash, setLastTxHash] = useState(null);
 
   const refreshStats = useCallback(async () => {
-    const [bal, count] = await Promise.all([getContractBalance(), getOrderCount()]);
-    setBalance(bal);
-    setOrderCount(count);
+    try {
+      const [bal, count] = await Promise.all([getContractBalance(), getOrderCount()]);
+      setBalance(bal);
+      setOrderCount(count);
+    } catch {
+      // Read-only stats may fail if contract not initialized
+    }
   }, []);
+
+  const checkFunding = useCallback(async () => {
+    if (!publicKey) {
+      setNeedsFunding(false);
+      return;
+    }
+    const exists = await checkAccountExists(publicKey);
+    setNeedsFunding(!exists);
+    if (!exists) {
+      setError(
+        'Your Freighter account is not funded on Stellar Testnet. Get free test XLM below.'
+      );
+    }
+  }, [publicKey]);
 
   useEffect(() => {
     refreshStats();
@@ -31,9 +57,44 @@ export default function RestaurantPanel() {
     return () => clearInterval(id);
   }, [refreshStats]);
 
+  useEffect(() => {
+    if (connected && publicKey) {
+      setError(null);
+      checkFunding();
+    } else {
+      setNeedsFunding(false);
+    }
+  }, [connected, publicKey, checkFunding]);
+
+  const handleFund = async () => {
+    if (!publicKey) return;
+    setFunding(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const hash = await fundTestnetAccount(publicKey);
+      setMessage(
+        hash
+          ? `Account funded! Tx: ${hash.slice(0, 16)}…`
+          : 'Account funded with test XLM. You can now Init or Pay.'
+      );
+      setNeedsFunding(false);
+      await checkFunding();
+    } catch (err) {
+      const { message: msg } = formatStellarError(err);
+      setError(msg || 'Funding failed. Try the Friendbot link below.');
+    } finally {
+      setFunding(false);
+    }
+  };
+
   const handleInit = async () => {
     if (!connected || !publicKey) {
       setError('Connect your Freighter wallet first');
+      return;
+    }
+    if (needsFunding) {
+      setError('Fund your testnet account before initializing.');
       return;
     }
     setLoading(true);
@@ -46,7 +107,9 @@ export default function RestaurantPanel() {
       setMessage(`Restaurant initialized! Tx: ${result.hash.slice(0, 16)}…`);
       await refreshStats();
     } catch (err) {
-      setError(err.message || 'Init failed');
+      const { message: msg, needsFunding: nf } = formatStellarError(err);
+      setError(msg);
+      setNeedsFunding(nf);
     } finally {
       setLoading(false);
       setAction(null);
@@ -56,6 +119,10 @@ export default function RestaurantPanel() {
   const handlePay = async (item) => {
     if (!connected || !publicKey) {
       setError('Connect your Freighter wallet first');
+      return;
+    }
+    if (needsFunding) {
+      setError('Fund your testnet account before paying.');
       return;
     }
     setLoading(true);
@@ -75,7 +142,9 @@ export default function RestaurantPanel() {
       setMessage(`Paid for ${item.name}! Tx: ${result.hash.slice(0, 16)}…`);
       await refreshStats();
     } catch (err) {
-      setError(err.message || `Payment for ${item.name} failed`);
+      const { message: msg, needsFunding: nf } = formatStellarError(err);
+      setError(msg);
+      setNeedsFunding(nf);
     } finally {
       setLoading(false);
       setAction(null);
@@ -101,6 +170,38 @@ export default function RestaurantPanel() {
           <span className="stat-value">{orderCount ?? '—'}</span>
         </div>
       </div>
+
+      {needsFunding && connected && (
+        <div className="alert alert-info funding-banner" role="status">
+          <p>Account not found on Testnet — fund with free XLM to use Init/Pay.</p>
+          <div className="funding-actions">
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={handleFund}
+              disabled={funding}
+            >
+              {funding ? (
+                <>
+                  <span className="spinner" /> Funding…
+                </>
+              ) : (
+                'Fund Testnet Account'
+              )}
+            </button>
+            {publicKey && (
+              <a
+                href={friendbotUrl(publicKey)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-ghost btn-sm"
+              >
+                Open Friendbot
+              </a>
+            )}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="alert alert-error" role="alert">
@@ -140,7 +241,7 @@ export default function RestaurantPanel() {
             type="button"
             className="btn btn-secondary"
             onClick={handleInit}
-            disabled={loading || !connected}
+            disabled={loading || !connected || needsFunding}
           >
             {action === 'init' ? (
               <>
@@ -166,7 +267,7 @@ export default function RestaurantPanel() {
                 type="button"
                 className="btn btn-primary btn-block"
                 onClick={() => handlePay(item)}
-                disabled={loading || !connected}
+                disabled={loading || !connected || needsFunding}
               >
                 {action === `pay-${item.id}` ? (
                   <>
