@@ -11,6 +11,7 @@ import {
   fundTestnetAccount,
   formatStellarError,
   friendbotUrl,
+  laboratoryFundUrl,
 } from '../lib/account.js';
 import { MENU_ITEMS, DEFAULT_TOKEN, CONTRACT_ID } from '../lib/contract.js';
 
@@ -21,6 +22,7 @@ export default function RestaurantPanel() {
   const [orderCount, setOrderCount] = useState(null);
   const [loading, setLoading] = useState(false);
   const [funding, setFunding] = useState(false);
+  const [checkingAccount, setCheckingAccount] = useState(false);
   const [action, setAction] = useState(null);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
@@ -40,14 +42,15 @@ export default function RestaurantPanel() {
   const checkFunding = useCallback(async () => {
     if (!publicKey) {
       setNeedsFunding(false);
-      return;
+      return false;
     }
-    const exists = await checkAccountExists(publicKey);
-    setNeedsFunding(!exists);
-    if (!exists) {
-      setError(
-        'Your Freighter account is not funded on Stellar Testnet. Get free test XLM below.'
-      );
+    setCheckingAccount(true);
+    try {
+      const exists = await checkAccountExists(publicKey);
+      setNeedsFunding(!exists);
+      return exists;
+    } finally {
+      setCheckingAccount(false);
     }
   }, [publicKey]);
 
@@ -73,16 +76,21 @@ export default function RestaurantPanel() {
     setMessage(null);
     try {
       const hash = await fundTestnetAccount(publicKey);
+      await new Promise((r) => setTimeout(r, 2000));
+      const exists = await checkAccountExists(publicKey);
+      if (!exists) {
+        throw new Error('Funding submitted but account not ready yet. Wait a few seconds and retry.');
+      }
+      setNeedsFunding(false);
       setMessage(
         hash
-          ? `Account funded! Tx: ${hash.slice(0, 16)}…`
+          ? `Account funded! Tx: ${hash.slice(0, 16)}… — you can now Init or Pay.`
           : 'Account funded with test XLM. You can now Init or Pay.'
       );
-      setNeedsFunding(false);
-      await checkFunding();
     } catch (err) {
       const { message: msg } = formatStellarError(err);
-      setError(msg || 'Funding failed. Try the Friendbot link below.');
+      setError(msg || 'Auto-fund failed. Click "Open Friendbot" or use Stellar Laboratory.');
+      setNeedsFunding(true);
     } finally {
       setFunding(false);
     }
@@ -93,8 +101,10 @@ export default function RestaurantPanel() {
       setError('Connect your Freighter wallet first');
       return;
     }
-    if (needsFunding) {
-      setError('Fund your testnet account before initializing.');
+    const funded = await checkFunding();
+    if (!funded) {
+      setNeedsFunding(true);
+      setError('Fund your testnet account first using the button below.');
       return;
     }
     setLoading(true);
@@ -121,8 +131,10 @@ export default function RestaurantPanel() {
       setError('Connect your Freighter wallet first');
       return;
     }
-    if (needsFunding) {
-      setError('Fund your testnet account before paying.');
+    const funded = await checkFunding();
+    if (!funded) {
+      setNeedsFunding(true);
+      setError('Fund your testnet account first using the button below.');
       return;
     }
     setLoading(true);
@@ -151,6 +163,8 @@ export default function RestaurantPanel() {
     }
   };
 
+  const actionsDisabled = loading || !connected || needsFunding || checkingAccount;
+
   return (
     <section className="panel restaurant-panel">
       <h2>Restaurant Contract</h2>
@@ -171,13 +185,21 @@ export default function RestaurantPanel() {
         </div>
       </div>
 
-      {needsFunding && connected && (
-        <div className="alert alert-info funding-banner" role="status">
-          <p>Account not found on Testnet — fund with free XLM to use Init/Pay.</p>
+      {checkingAccount && connected && (
+        <div className="alert alert-info">Checking testnet account…</div>
+      )}
+
+      {needsFunding && connected && !checkingAccount && (
+        <div className="funding-card" role="status">
+          <h3>Fund Testnet Wallet</h3>
+          <p>
+            Freighter must be on <strong>Testnet</strong>. Your address{' '}
+            <code>{publicKey?.slice(0, 8)}…</code> needs test XLM before Init/Pay.
+          </p>
           <div className="funding-actions">
             <button
               type="button"
-              className="btn btn-primary btn-sm"
+              className="btn btn-primary"
               onClick={handleFund}
               disabled={funding}
             >
@@ -189,21 +211,27 @@ export default function RestaurantPanel() {
                 'Fund Testnet Account'
               )}
             </button>
-            {publicKey && (
-              <a
-                href={friendbotUrl(publicKey)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-ghost btn-sm"
-              >
-                Open Friendbot
-              </a>
-            )}
+            <a
+              href={friendbotUrl(publicKey)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-secondary btn-sm"
+            >
+              Open Friendbot
+            </a>
+            <a
+              href={laboratoryFundUrl(publicKey)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-ghost btn-sm"
+            >
+              Stellar Laboratory
+            </a>
           </div>
         </div>
       )}
 
-      {error && (
+      {error && !needsFunding && (
         <div className="alert alert-error" role="alert">
           {error}
         </div>
@@ -241,7 +269,7 @@ export default function RestaurantPanel() {
             type="button"
             className="btn btn-secondary"
             onClick={handleInit}
-            disabled={loading || !connected || needsFunding}
+            disabled={actionsDisabled}
           >
             {action === 'init' ? (
               <>
@@ -267,7 +295,7 @@ export default function RestaurantPanel() {
                 type="button"
                 className="btn btn-primary btn-block"
                 onClick={() => handlePay(item)}
-                disabled={loading || !connected || needsFunding}
+                disabled={actionsDisabled}
               >
                 {action === `pay-${item.id}` ? (
                   <>

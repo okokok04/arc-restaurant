@@ -367,14 +367,38 @@ input[type='text']:focus {
   color: #93c5fd;
 }
 
-.funding-banner p {
-  margin-bottom: 0.6rem;
-}
-
 .funding-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.funding-card {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(59, 130, 246, 0.1));
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.funding-card h3 {
+  font-size: 0.95rem;
+  margin-bottom: 0.35rem;
+  color: #c7d2fe;
+}
+
+.funding-card p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+}
+
+.funding-card code {
+  font-size: 0.8rem;
+  background: var(--surface-2);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
 }
 
 .tx-hash {
