@@ -189,18 +189,24 @@ export async function fetchContractEvents(startLedger = null) {
   const latest = await server.getLatestLedger();
   const from = startLedger ?? Math.max(1, latest.sequence - 1000);
 
+  if (!CONTRACT_ID || CONTRACT_ID.length < 50) {
+    console.warn('Invalid CONTRACT_ID for event streaming');
+    return [];
+  }
+
   const filter = {
     type: 'contract',
     contractIds: [CONTRACT_ID],
   };
 
-  const response = await server.getEvents({
-    startLedger: from,
-    endLedger: latest.sequence,
-    filters: [filter],
-  });
+  try {
+    const response = await server.getEvents({
+      startLedger: from,
+      endLedger: latest.sequence,
+      filters: [filter],
+    });
 
-  return (response.events || []).map((evt) => ({
+    return (response.events || []).map((evt) => ({
     id: evt.id || `${evt.ledger}-${evt.txHash}`,
     type: evt.type,
     ledger: evt.ledger,
@@ -223,7 +229,11 @@ export async function fetchContractEvents(startLedger = null) {
         })()
       : null,
     timestamp: evt.ledgerClosedAt || null,
-  }));
+    }));
+  } catch (err) {
+    console.error('Error fetching events:', err);
+    return [];
+  }
 }
 
 export { server, CONTRACT_ID, NETWORK_PASSPHRASE };
