@@ -1,6 +1,6 @@
 /**
  * Deploy RestaurantContract to Stellar Testnet.
- * Run from repo root: npm run deploy:contract --prefix frontend
+ * Fixed version: uses correct WASM path relative to project root.
  */
 import fs from 'fs';
 import path from 'path';
@@ -15,9 +15,11 @@ import {
   hash,
   xdr,
   Contract,
+  nativeToScVal,
 } from '@stellar/stellar-sdk';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Script is at frontend/scripts/, project root is ../../
 const ROOT = path.resolve(__dirname, '../..');
 const WASM_PATH = path.join(
   ROOT,
@@ -32,7 +34,15 @@ const server = new rpc.Server(RPC_URL);
 
 async function fundAccount(publicKey) {
   const res = await fetch(`${HORIZON_URL}/friendbot?addr=${encodeURIComponent(publicKey)}`);
-  if (!res.ok) throw new Error(`Friendbot failed: ${await res.text()}`);
+  if (!res.ok) {
+    const text = await res.text();
+    // Account might already exist — try to get it
+    if (text.includes('createAccountAlreadyExist') || text.includes('already exists')) {
+      console.log('Account already funded, continuing...');
+      return;
+    }
+    throw new Error(`Friendbot failed: ${text}`);
+  }
   return res.json();
 }
 
@@ -59,43 +69,47 @@ async function submitSigned(keypair, tx) {
   if (sent.status === 'ERROR') {
     throw new Error(sent.errorResult?.toString() || 'Send failed');
   }
-  await pollTx(sent.hash);
-  return { hash: sent.hash, sim };
+  return pollTx(sent.hash);
 }
 
 async function main() {
   if (!fs.existsSync(WASM_PATH)) {
-    throw new Error(
-      `WASM not found. Build first:\n  cargo build --target wasm32-unknown-unknown --release --package restaurant-contract`
-    );
+    console.error(`WASM not found at: ${WASM_PATH}`);
+    console.error('Build first:');
+    console.error('  $env:RUSTFLAGS="-C target-feature=-reference-types"; cargo build --target wasm32-unknown-unknown --release --package restaurant-contract');
+    process.exit(1);
   }
 
-  const wasm = fs.readFileSync(WASM_PATH);
-  const deployer = Keypair.random();
+  const wasmData = fs.readFileSync(WASM_PATH);
+  console.log(`WASM size: ${wasmData.length} bytes`);
 
-  console.log('Funding deployer:', deployer.publicKey());
+  const deployer = Keypair.random();
+  console.log('\nDeployer public key:', deployer.publicKey());
+  console.log('Funding deployer via Friendbot...');
+
   await fundAccount(deployer.publicKey());
-  await new Promise((r) => setTimeout(r, 3000));
+  await new Promise((r) => setTimeout(r, 4000));
 
   let account = await server.getAccount(deployer.publicKey());
 
-  console.log('Uploading WASM...');
+  console.log('\nUploading WASM...');
   const uploadTx = new TransactionBuilder(account, {
-    fee: BASE_FEE,
+    fee: '1000000',
     networkPassphrase: NETWORK_PASSPHRASE,
   })
-    .addOperation(Operation.uploadContractWasm({ wasm }))
-    .setTimeout(30)
+    .addOperation(Operation.uploadContractWasm({ wasm: wasmData }))
+    .setTimeout(60)
     .build();
 
-  await submitSigned(deployer, uploadTx);
+  const uploadResult = await submitSigned(deployer, uploadTx);
+  const wasmHash = hash(wasmData);
+  console.log('WASM uploaded. Hash:', wasmHash.toString('hex'));
 
-  const wasmHash = hash(wasm);
   account = await server.getAccount(deployer.publicKey());
 
-  console.log('Deploying contract...');
+  console.log('\nDeploying contract...');
   const deployTx = new TransactionBuilder(account, {
-    fee: BASE_FEE,
+    fee: '1000000',
     networkPassphrase: NETWORK_PASSPHRASE,
   })
     .addOperation(
@@ -105,52 +119,69 @@ async function main() {
         salt: Keypair.random().rawPublicKey(),
       })
     )
-    .setTimeout(30)
+    .setTimeout(60)
     .build();
 
-  const { sim: deploySim } = await submitSigned(deployer, deployTx);
-  const contractId = Address.fromScVal(deploySim.result.retval).toString();
-  console.log('Contract ID:', contractId);
+  const deploySim = await server.simulateTransaction(deployTx);
+  if (rpc.Api.isSimulationError(deploySim)) {
+    throw new Error(deploySim.error || 'Deploy simulation failed');
+  }
 
+  const assembledDeploy = rpc.assembleTransaction(deployTx, deploySim).build();
+  assembledDeploy.sign(deployer);
+
+  const deployResult = await server.sendTransaction(assembledDeploy);
+  if (deployResult.status === 'ERROR') {
+    throw new Error(deployResult.errorResult?.toString() || 'Deploy send failed');
+  }
+
+  const deployReceipt = await pollTx(deployResult.hash);
+  const contractId = Address.fromScVal(deploySim.result.retval).toString();
+  console.log('\n✅ Contract deployed! ID:', contractId);
+
+  // Init contract
   account = await server.getAccount(deployer.publicKey());
   const contract = new Contract(contractId);
 
-  console.log('Initializing restaurant...');
+  console.log('\nInitializing restaurant...');
   const initTx = new TransactionBuilder(account, {
-    fee: BASE_FEE,
+    fee: '1000000',
     networkPassphrase: NETWORK_PASSPHRASE,
   })
     .addOperation(
       contract.call(
         'init',
         Address.fromString(deployer.publicKey()).toScVal(),
-        xdr.ScVal.scvString('Arc Bistro')
+        nativeToScVal('Arc Bistro', { type: 'string' }),
       )
     )
-    .setTimeout(30)
+    .setTimeout(60)
     .build();
 
-  const { hash: initHash } = await submitSigned(deployer, initTx);
+  const initReceipt = await submitSigned(deployer, initTx);
+  const initHash = deployResult.hash;
+
+  console.log('\nRestaurant initialized!');
 
   const envContent = `VITE_NETWORK=TESTNET
 VITE_CONTRACT_ID=${contractId}
 VITE_RPC_URL=${RPC_URL}
 VITE_HORIZON_URL=${HORIZON_URL}
+VITE_TOKEN_ADDRESS=CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC
 VITE_EXAMPLE_TX_HASH=${initHash}
 `;
 
   fs.writeFileSync(path.join(ROOT, 'frontend/.env'), envContent);
-  fs.writeFileSync(
-    path.join(ROOT, 'frontend/.env.production.local'),
-    envContent
-  );
+  fs.writeFileSync(path.join(ROOT, 'frontend/.env.production.local'), envContent);
 
-  console.log('\n=== DEPLOYMENT COMPLETE ===');
+  console.log('\n========== DEPLOYMENT COMPLETE ==========');
   console.log('CONTRACT_ID=' + contractId);
   console.log('INIT_TX=' + initHash);
+  console.log('\nUpdate .env and README with:');
+  console.log(envContent);
 }
 
 main().catch((err) => {
-  console.error(err);
+  console.error('\n❌ Deployment failed:', err.message || err);
   process.exit(1);
 });

@@ -3,12 +3,20 @@ import { HORIZON_URL, NETWORK } from './contract.js';
 export function formatStellarError(err) {
   const msg = err?.message || String(err);
 
-  if (/non-existent contract function|MissingValue/i.test(msg)) {
+  if (/non-existent contract function|MissingValue|does not exist|contract.{0,10}not found/i.test(msg)) {
     return {
       message:
-        'This contract ID does not match our RestaurantContract (missing init/pay). Deploy the repo contract and update VITE_CONTRACT_ID.',
+        'Contract not found on testnet. The deployed contract may have expired. Please redeploy or contact admin.',
       needsFunding: false,
       wrongContract: true,
+    };
+  }
+
+  if (/invalid contract id|invalid strkey|invalid address/i.test(msg)) {
+    return {
+      message:
+        'Token contract address is invalid for testnet. Please check VITE_TOKEN_ADDRESS in your .env file.',
+      needsFunding: false,
     };
   }
 
@@ -20,9 +28,23 @@ export function formatStellarError(err) {
     };
   }
 
-  if (/already initialized/i.test(msg)) {
+  if (/already initialized|Error\(Contract, #1\)/i.test(msg)) {
     return {
       message: 'Restaurant is already initialized on this contract. You can proceed to Pay.',
+      needsFunding: false,
+    };
+  }
+
+  if (/amount must be positive|Error\(Contract, #4\)/i.test(msg)) {
+    return {
+      message: 'Payment amount must be greater than 0.',
+      needsFunding: false,
+    };
+  }
+
+  if (/not initialized|Error\(Contract, #2\)/i.test(msg)) {
+    return {
+      message: 'Restaurant has not been initialized yet. Click "Init Restaurant" first.',
       needsFunding: false,
     };
   }
