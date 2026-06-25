@@ -26,14 +26,13 @@ jobs:
           echo "DEPLOYER=$(soroban keys address deployer)" >> $GITHUB_ENV
 
       - name: Build contract
-        run: |
-          cd contracts/restaurant
-          soroban contract build
+        run: soroban contract build --manifest-path contracts/restaurant/Cargo.toml
 
       - name: Deploy contract
         id: deploy
         run: |
-          WASM="../../target/wasm32-unknown-unknown/release/restaurant_contract.wasm"
+          WASM="target/wasm32-unknown-unknown/release/restaurant_contract.wasm"
+          ls -la "$WASM"
           CONTRACT_ID=$(soroban contract deploy \
             --wasm "$WASM" \
             --source deployer \
