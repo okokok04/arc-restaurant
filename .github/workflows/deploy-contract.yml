@@ -24,6 +24,8 @@ jobs:
         run: |
           soroban keys generate deployer --network testnet --fund
           echo "DEPLOYER=$(soroban keys address deployer)" >> $GITHUB_ENV
+          sleep 15
+          curl -sf "https://horizon-testnet.stellar.org/accounts/$(soroban keys address deployer)" | head -c 200
 
       - name: Build contract
         run: soroban contract build --manifest-path contracts/restaurant/Cargo.toml
@@ -33,12 +35,20 @@ jobs:
         run: |
           WASM="target/wasm32-unknown-unknown/release/restaurant_contract.wasm"
           ls -la "$WASM"
-          CONTRACT_ID=$(soroban contract deploy \
-            --wasm "$WASM" \
-            --source deployer \
-            --network testnet)
-          echo "contract_id=$CONTRACT_ID" >> $GITHUB_OUTPUT
-          echo "CONTRACT_ID=$CONTRACT_ID"
+          for attempt in 1 2 3; do
+            echo "Deploy attempt $attempt..."
+            if CONTRACT_ID=$(soroban contract deploy \
+              --wasm "$WASM" \
+              --source deployer \
+              --network testnet 2>&1); then
+              echo "contract_id=$CONTRACT_ID" >> $GITHUB_OUTPUT
+              echo "CONTRACT_ID=$CONTRACT_ID"
+              exit 0
+            fi
+            echo "$CONTRACT_ID"
+            sleep 10
+          done
+          exit 1
 
       - name: Initialize contract
         id: init
