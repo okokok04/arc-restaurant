@@ -13,8 +13,7 @@ export function formatStellarError(err) {
 
   if (/invalid contract id|invalid strkey|invalid address/i.test(msg)) {
     return {
-      message:
-        'Token contract address is invalid for testnet. Please check VITE_TOKEN_ADDRESS in your .env file.',
+      message: null, // Don't show technical token errors to the user
       needsFunding: false,
     };
   }
