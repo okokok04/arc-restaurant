@@ -8,8 +8,8 @@ use soroban_sdk::{
 };
 
 fn setup_token(env: &Env, admin: &Address) -> Address {
-    let token_contract = env.register_stellar_asset_contract_v2(admin.clone());
-    token_contract.address()
+    let token_contract = env.register_stellar_asset_contract(admin.clone());
+    token_contract
 }
 
 fn mint(env: &Env, token: &Address, to: &Address, amount: i128) {
@@ -22,7 +22,7 @@ fn test_init_sets_owner_and_name() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let contract_id = env.register(RestaurantContract, ());
+    let contract_id = env.register_contract(None, RestaurantContract);
     let client = RestaurantContractClient::new(&env, &contract_id);
 
     let owner = Address::generate(&env);
@@ -41,7 +41,7 @@ fn test_pay_transfers_tokens_and_updates_balance() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let contract_id = env.register(RestaurantContract, ());
+    let contract_id = env.register_contract(None, RestaurantContract);
     let client = RestaurantContractClient::new(&env, &contract_id);
 
     let owner = Address::generate(&env);
@@ -65,12 +65,12 @@ fn test_pay_transfers_tokens_and_updates_balance() {
 }
 
 #[test]
-#[should_panic(expected = "already initialized")]
+#[should_panic(expected = "Error(Contract, #1)")]
 fn test_init_twice_panics() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let contract_id = env.register(RestaurantContract, ());
+    let contract_id = env.register_contract(None, RestaurantContract);
     let client = RestaurantContractClient::new(&env, &contract_id);
 
     let owner = Address::generate(&env);
@@ -81,12 +81,12 @@ fn test_init_twice_panics() {
 }
 
 #[test]
-#[should_panic(expected = "amount must be positive")]
+#[should_panic(expected = "Error(Contract, #4)")]
 fn test_pay_zero_amount_panics() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let contract_id = env.register(RestaurantContract, ());
+    let contract_id = env.register_contract(None, RestaurantContract);
     let client = RestaurantContractClient::new(&env, &contract_id);
 
     let owner = Address::generate(&env);

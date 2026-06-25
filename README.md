@@ -143,20 +143,22 @@ Arc/
 │   └── src/
 │       ├── lib.rs            # RestaurantContract: init, pay, getters
 │       └── test.rs           # Unit tests
-├── frontend/                 # React + Vite dApp
-│   ├── src/
-│   │   ├── lib/
-│   │   │   ├── contract.js   # Contract ID, function names, arg builders
-│   │   │   └── soroban.js    # stellar-sdk integration layer
-│   │   ├── components/
-│   │   │   ├── WalletConnect.jsx
-│   │   │   ├── RestaurantPanel.jsx
-│   │   │   └── EventStream.jsx
-│   │   └── hooks/
-│   │       ├── useWallet.js
-│   │       └── useEventStream.js
-│   └── vercel.json
-├── scripts/deploy.sh
+├── src/                      # React + Vite dApp (moved to root)
+│   ├── lib/
+│   │   ├── contract.js       # Contract ID, function names, arg builders
+│   │   └── soroban.js        # stellar-sdk integration layer
+│   ├── components/
+│   │   ├── WalletConnect.jsx
+│   │   ├── RestaurantPanel.jsx
+│   │   └── EventStream.jsx
+│   └── hooks/
+│       ├── useWallet.js
+│       └── useEventStream.js
+├── index.html                # Vite entry point
+├── package.json              # NPM dependencies
+├── vercel.json               # Vercel config
+├── scripts/deploy.sh         # Bash deploy script
+├── scripts/publish.ps1       # Windows publish script
 ├── .github/workflows/ci.yml
 └── README.md
 ```

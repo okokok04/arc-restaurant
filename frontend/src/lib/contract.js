@@ -1,11 +1,10 @@
 /** Deployed RestaurantContract on Stellar Testnet — update after deploy */
 export const CONTRACT_ID =
-  import.meta.env.VITE_CONTRACT_ID || '';
+  import.meta.env.VITE_CONTRACT_ID || 'CBZCZQL4AYVXP7LWVDO5BRJ45JRKBVYQFN7IQKQOEFIKVAME5I2X5VT4';
 
 /** Example tx hash from contract interaction (testnet) */
 export const EXAMPLE_TX_HASH =
-  import.meta.env.VITE_EXAMPLE_TX_HASH ||
-  'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456';
+  import.meta.env.VITE_EXAMPLE_TX_HASH || '';
 
 export const NETWORK = import.meta.env.VITE_NETWORK || 'TESTNET';
 

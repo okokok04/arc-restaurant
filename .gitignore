@@ -1,7 +1,7 @@
 # Dependencies
 node_modules/
-frontend/dist/
-frontend/.vite/
+dist/
+.vite/
 
 # Rust
 target/
@@ -33,3 +33,4 @@ npm-debug.log*
 
 # Vercel
 .vercel/
+.vercel

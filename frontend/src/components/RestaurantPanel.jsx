@@ -178,20 +178,23 @@ export default function RestaurantPanel() {
 
   return (
     <section className="panel restaurant-panel">
-      <h2>Restaurant Contract</h2>
+      <div className="panel-header">
+        <h2>Restaurant Dashboard</h2>
+        <span className="badge-network">Stellar Testnet</span>
+      </div>
       <p className="contract-id">
-        Contract: <code>{CONTRACT_ID.slice(0, 12)}…</code>
+        Logic ID: <code>{CONTRACT_ID}</code>
       </p>
 
       <div className="stats-grid">
         <div className="stat-card">
-          <span className="stat-label">Balance</span>
+          <span className="stat-label">Contract Balance</span>
           <span className="stat-value">
             {balance !== null ? `${(balance / 1_000_000).toFixed(2)} XLM` : '—'}
           </span>
         </div>
         <div className="stat-card">
-          <span className="stat-label">Orders</span>
+          <span className="stat-label">Total Orders</span>
           <span className="stat-value">{orderCount ?? '—'}</span>
         </div>
       </div>

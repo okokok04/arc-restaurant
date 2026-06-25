@@ -21,7 +21,7 @@ import { formatStellarError } from './account.js';
 const server = new rpc.Server(RPC_URL, { allowHttp: RPC_URL.startsWith('http://') });
 
 function scValFromSpec(spec) {
-  if (spec.address) return nativeToScVal(spec.address, { type: 'address' });
+  if (spec.address) return Address.fromString(spec.address).toScVal();
   if (spec.string !== undefined) return nativeToScVal(spec.string, { type: 'string' });
   if (spec.i128 !== undefined) return nativeToScVal(BigInt(spec.i128), { type: 'i128' });
   if (spec.u64 !== undefined) return nativeToScVal(BigInt(spec.u64), { type: 'u64' });
