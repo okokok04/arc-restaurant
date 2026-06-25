@@ -1,0 +1,79 @@
+name: Deploy Contract to Testnet
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build and Deploy RestaurantContract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+          override: true
+
+      - name: Install Soroban CLI
+        run: cargo install --locked soroban-cli --version 22.0.0
+
+      - name: Generate deployer identity
+        run: |
+          soroban keys generate deployer --network testnet --fund
+          echo "DEPLOYER=$(soroban keys address deployer)" >> $GITHUB_ENV
+
+      - name: Build contract
+        run: |
+          cd contracts/restaurant
+          soroban contract build
+
+      - name: Deploy contract
+        id: deploy
+        run: |
+          WASM="../../target/wasm32-unknown-unknown/release/restaurant_contract.wasm"
+          CONTRACT_ID=$(soroban contract deploy \
+            --wasm "$WASM" \
+            --source deployer \
+            --network testnet)
+          echo "contract_id=$CONTRACT_ID" >> $GITHUB_OUTPUT
+          echo "CONTRACT_ID=$CONTRACT_ID"
+
+      - name: Initialize contract
+        id: init
+        run: |
+          TX=$(soroban contract invoke \
+            --id "${{ steps.deploy.outputs.contract_id }}" \
+            --source deployer \
+            --network testnet \
+            -- init \
+            --owner "$(soroban keys address deployer)" \
+            --name "Arc Bistro")
+          echo "init_tx=$TX" >> $GITHUB_OUTPUT
+
+      - name: Write deployment info
+        run: |
+          mkdir -p deployment
+          cat > deployment/testnet.json <<EOF
+          {
+            "contractId": "${{ steps.deploy.outputs.contract_id }}",
+            "initTx": "${{ steps.init.outputs.init_tx }}",
+            "network": "testnet",
+            "deployedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          cat deployment/testnet.json
+
+      - name: Upload deployment artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: testnet-deployment
+          path: deployment/testnet.json
+
+      - name: Summary
+        run: |
+          echo "## Testnet Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "Contract ID: \`${{ steps.deploy.outputs.contract_id }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "Init TX: \`${{ steps.init.outputs.init_tx }}\`" >> $GITHUB_STEP_SUMMARY

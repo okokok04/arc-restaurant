@@ -3,6 +3,15 @@ import { HORIZON_URL, NETWORK } from './contract.js';
 export function formatStellarError(err) {
   const msg = err?.message || String(err);
 
+  if (/non-existent contract function|MissingValue/i.test(msg)) {
+    return {
+      message:
+        'This contract ID does not match our RestaurantContract (missing init/pay). Deploy the repo contract and update VITE_CONTRACT_ID.',
+      needsFunding: false,
+      wrongContract: true,
+    };
+  }
+
   if (/account not found|not funded/i.test(msg)) {
     return {
       message:

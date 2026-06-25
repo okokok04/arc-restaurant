@@ -163,7 +163,18 @@ export default function RestaurantPanel() {
     }
   };
 
-  const actionsDisabled = loading || !connected || needsFunding || checkingAccount;
+  const actionsDisabled = loading || !connected || needsFunding || checkingAccount || !CONTRACT_ID;
+
+  if (!CONTRACT_ID) {
+    return (
+      <section className="panel restaurant-panel">
+        <h2>Restaurant Contract</h2>
+        <div className="alert alert-error" role="alert">
+          VITE_CONTRACT_ID is not configured. Deploy the contract and set the env var on Vercel.
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="panel restaurant-panel">

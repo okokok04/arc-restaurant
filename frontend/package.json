@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "deploy:contract": "node scripts/deploy-contract.mjs",
     "lint": "eslint src --ext js,jsx"
   },
   "dependencies": {

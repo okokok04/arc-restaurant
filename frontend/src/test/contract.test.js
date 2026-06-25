@@ -8,8 +8,12 @@ import {
 } from '../lib/contract.js';
 
 describe('contract.js configuration', () => {
-  it('exports a valid Stellar contract ID', () => {
-    expect(CONTRACT_ID).toMatch(/^C[A-Z0-9]{55}$/);
+  it('exports a valid Stellar contract ID when configured', () => {
+    if (CONTRACT_ID) {
+      expect(CONTRACT_ID).toMatch(/^C[A-Z0-9]{55}$/);
+    } else {
+      expect(CONTRACT_ID).toBe('');
+    }
   });
 
   it('maps frontend actions to Rust contract function names', () => {
