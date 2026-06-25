@@ -13,7 +13,7 @@ export function formatStellarError(err) {
 
   if (/invalid contract id|invalid strkey|invalid address/i.test(msg)) {
     return {
-      message: null, // Don't show technical token errors to the user
+      message: 'Token or Contract ID is invalid. Please try a different contract or check your network.',
       needsFunding: false,
     };
   }

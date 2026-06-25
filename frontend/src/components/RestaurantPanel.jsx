@@ -154,8 +154,9 @@ export default function RestaurantPanel() {
       setMessage(`Paid for ${item.name}! Tx: ${result.hash.slice(0, 16)}…`);
       await refreshStats();
     } catch (err) {
+      console.error('Payment error:', err);
       const { message: msg, needsFunding: nf } = formatStellarError(err);
-      setError(msg);
+      setError(msg || 'Payment simulation failed. Ensure restaurant is initialized.');
       setNeedsFunding(nf);
     } finally {
       setLoading(false);
