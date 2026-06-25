@@ -1,6 +1,6 @@
 /** Deployed RestaurantContract on Stellar Testnet — update after deploy */
 export const CONTRACT_ID =
-  import.meta.env.VITE_CONTRACT_ID || 'CBZCZQL4AYVXP7LWVDO5BRJ45JRKBVYQFN7IQKQOEFIKVAME5I2X5VT4';
+  import.meta.env.VITE_CONTRACT_ID || 'CAU7C5C4SJDGXVXRTXNDZ3WUTW7Z5Y47MXAEQHHDYOBLHNDHXV4ENEW7'; 
 
 /** Example tx hash from contract interaction (testnet) */
 export const EXAMPLE_TX_HASH =
