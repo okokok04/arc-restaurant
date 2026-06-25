@@ -22,7 +22,7 @@ export function useEventStream(enabled = true) {
           return [...novel, ...prev].slice(0, 50);
         });
         const maxLedger = Math.max(...fetched.map((e) => e.ledger || 0));
-        if (maxLedger > 0) setLastLedger(maxLedger);
+        if (maxLedger > 0) setLastLedger(maxLedger + 1);
       }
     } catch (err) {
       setError(err.message || 'Failed to fetch events');

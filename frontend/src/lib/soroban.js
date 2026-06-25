@@ -179,7 +179,7 @@ export async function fetchContractEvents(startLedger = null) {
   const from = startLedger ?? Math.max(1, latest.sequence - 1000);
 
   const filter = {
-    type: rpc.EventFilterType.CONTRACT,
+    type: 'contract',
     contractIds: [CONTRACT_ID],
   };
 
@@ -194,9 +194,23 @@ export async function fetchContractEvents(startLedger = null) {
     type: evt.type,
     ledger: evt.ledger,
     txHash: evt.txHash,
-    contractId: evt.contractId?.toString(),
-    topics: evt.topic?.map((t) => scValToNative(t)) ?? [],
-    value: evt.value ? scValToNative(evt.value) : null,
+    contractId: evt.contractId?.toString?.() ?? evt.contractId,
+    topics: evt.topic?.map((t) => {
+      try {
+        return scValToNative(t);
+      } catch {
+        return t;
+      }
+    }) ?? [],
+    value: evt.value
+      ? (() => {
+          try {
+            return scValToNative(evt.value);
+          } catch {
+            return evt.value;
+          }
+        })()
+      : null,
     timestamp: evt.ledgerClosedAt || null,
   }));
 }

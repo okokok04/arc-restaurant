@@ -1,9 +1,7 @@
 import { useEventStream } from '../hooks/useEventStream.js';
-import { useWalletContext } from '../context/WalletContext.jsx';
 
 export default function EventStream() {
-  const { connected } = useWalletContext();
-  const { events, loading, error, refresh } = useEventStream(connected);
+  const { events, loading, error, refresh } = useEventStream(true);
 
   return (
     <section className="panel event-panel">
@@ -22,17 +20,13 @@ export default function EventStream() {
         Real-time Soroban contract events via RPC polling (PaymentEvent, InitializedEvent)
       </p>
 
-      {!connected && (
-        <div className="alert alert-info">Connect wallet to start event streaming</div>
-      )}
-
       {error && (
         <div className="alert alert-error" role="alert">
           {error}
         </div>
       )}
 
-      {connected && events.length === 0 && !loading && (
+      {events.length === 0 && !loading && !error && (
         <p className="empty-state">No events yet. Initialize or pay to emit events.</p>
       )}
 
