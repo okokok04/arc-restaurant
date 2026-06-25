@@ -182,4 +182,9 @@ Arc/
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
+
+## Additional Docs
+
+- [Deployment Guide](docs/DEPLOYMENT.md)
+- [Architecture Notes](docs/ARCHITECTURE.md)
