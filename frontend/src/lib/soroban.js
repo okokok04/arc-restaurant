@@ -10,6 +10,7 @@ import {
 } from '@stellar/stellar-sdk';
 import {
   CONTRACT_ID,
+  isValidContractId,
   NETWORK_PASSPHRASE,
   RPC_URL,
   CONTRACT_FUNCTIONS,
@@ -29,6 +30,9 @@ function scValFromSpec(spec) {
 }
 
 function getContract() {
+  if (!isValidContractId(CONTRACT_ID)) {
+    throw new Error('Invalid contract ID. Set VITE_CONTRACT_ID to a 56-character Stellar contract address.');
+  }
   return new Contract(CONTRACT_ID);
 }
 
@@ -189,8 +193,7 @@ export async function fetchContractEvents(startLedger = null) {
   const latest = await server.getLatestLedger();
   const from = startLedger ?? Math.max(1, latest.sequence - 1000);
 
-  if (!CONTRACT_ID || CONTRACT_ID.length < 50) {
-    console.warn('Invalid CONTRACT_ID for event streaming');
+  if (!isValidContractId(CONTRACT_ID)) {
     return [];
   }
 

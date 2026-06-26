@@ -3,17 +3,18 @@ import { HORIZON_URL, NETWORK } from './contract.js';
 export function formatStellarError(err) {
   const msg = err?.message || String(err);
 
-  if (/non-existent contract function|MissingValue|does not exist|contract.{0,10}not found/i.test(msg)) {
+  if (/non-existent contract function|MissingValue/i.test(msg)) {
     return {
-      message: null, // Don't block the UI with an error, just wait for user to Init
+      message:
+        'Contract mismatch: deployed contract does not expose init/pay. Deploy this repo\'s contract and set VITE_CONTRACT_ID.',
       needsFunding: false,
-      wrongContract: false,
+      wrongContract: true,
     };
   }
 
   if (/invalid contract id|invalid strkey|invalid address/i.test(msg)) {
     return {
-      message: null, 
+      message: 'Invalid contract or token address. Check VITE_CONTRACT_ID on Vercel.',
       needsFunding: false,
     };
   }
@@ -45,6 +46,10 @@ export function formatStellarError(err) {
       message: 'Restaurant has not been initialized yet. Click "Init Restaurant" first.',
       needsFunding: false,
     };
+  }
+
+  if (/simulation failed|operation failed/i.test(msg)) {
+    return { message: msg, needsFunding: false };
   }
 
   return { message: msg, needsFunding: false };

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   CONTRACT_ID,
+  isValidContractId,
   CONTRACT_FUNCTIONS,
   buildInitArgs,
   buildPayArgs,
@@ -8,11 +9,16 @@ import {
 } from '../lib/contract.js';
 
 describe('contract.js configuration', () => {
-  it('exports a valid Stellar contract ID when configured', () => {
+  it('validates Stellar contract ID format', () => {
+    expect(isValidContractId('CBZCZQL4AYVXP7LWVDO5BRJ45JRKBVYQFN7IQKQOEFIKVAME5I2X5VT4')).toBe(true);
+    expect(isValidContractId('CDG6P7LKWVN4S3WUTW7Z5Y47MXAEQHHDYOBLHNDHXV4ENZXMFCAU7C5')).toBe(false);
+    expect(isValidContractId('')).toBe(false);
+  });
+
+  it('exports contract ID from env or empty string', () => {
+    expect(typeof CONTRACT_ID).toBe('string');
     if (CONTRACT_ID) {
-      expect(CONTRACT_ID).toMatch(/^C[A-Z0-9]{55}$/);
-    } else {
-      expect(CONTRACT_ID).toBe('');
+      expect(isValidContractId(CONTRACT_ID)).toBe(true);
     }
   });
 

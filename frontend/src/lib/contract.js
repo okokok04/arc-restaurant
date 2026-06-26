@@ -1,6 +1,10 @@
-/** Deployed RestaurantContract on Stellar Testnet — update after deploy */
-export const CONTRACT_ID =
-  import.meta.env.VITE_CONTRACT_ID || 'CDG6P7LKWVN4S3WUTW7Z5Y47MXAEQHHDYOBLHNDHXV4ENZXMFCAU7C5'; 
+/** Deployed RestaurantContract on Stellar Testnet — set via VITE_CONTRACT_ID */
+export const CONTRACT_ID = (import.meta.env.VITE_CONTRACT_ID || '').trim();
+
+/** Stellar contract IDs are 56 chars: C + 55 base32 chars */
+export function isValidContractId(id) {
+  return typeof id === 'string' && /^C[A-Z2-7]{55}$/.test(id);
+}
 
 /** Example tx hash from contract interaction (testnet) */
 export const EXAMPLE_TX_HASH =
@@ -22,7 +26,7 @@ export const HORIZON_URL =
 /** Native XLM Stellar Asset Contract on testnet */
 export const DEFAULT_TOKEN =
   import.meta.env.VITE_TOKEN_ADDRESS ||
-  'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
+  'CDLZFC3SYJYDZT7K7VZ75HMSZY47MXAEQHHDYOBLHNDHXV4ENZXMF';
 
 /** Contract function names — must match Rust #[contractimpl] methods */
 export const CONTRACT_FUNCTIONS = {

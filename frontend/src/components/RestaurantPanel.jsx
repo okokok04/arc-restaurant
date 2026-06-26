@@ -13,7 +13,14 @@ import {
   friendbotUrl,
   laboratoryFundUrl,
 } from '../lib/account.js';
-import { MENU_ITEMS, DEFAULT_TOKEN, CONTRACT_ID } from '../lib/contract.js';
+import {
+  CONTRACT_ID,
+  isValidContractId,
+  CONTRACT_FUNCTIONS,
+  buildInitArgs,
+  buildPayArgs,
+  MENU_ITEMS,
+} from '../lib/contract.js';
 
 export default function RestaurantPanel() {
   const { publicKey, connected, signTransaction } = useWalletContext();
@@ -164,14 +171,16 @@ export default function RestaurantPanel() {
     }
   };
 
-  const actionsDisabled = loading || !connected || needsFunding || checkingAccount || !CONTRACT_ID;
+  const actionsDisabled = loading || !connected || needsFunding || checkingAccount || !isValidContractId(CONTRACT_ID);
 
-  if (!CONTRACT_ID) {
+  if (!isValidContractId(CONTRACT_ID)) {
     return (
       <section className="panel restaurant-panel">
         <h2>Restaurant Contract</h2>
         <div className="alert alert-error" role="alert">
-          VITE_CONTRACT_ID is not configured. Deploy the contract and set the env var on Vercel.
+          {CONTRACT_ID
+            ? `Invalid VITE_CONTRACT_ID (${CONTRACT_ID.length} chars). Must be 56 characters (C + 55).`
+            : 'VITE_CONTRACT_ID is not configured. Deploy the contract and set the env var on Vercel.'}
         </div>
       </section>
     );
