@@ -1,15 +1,22 @@
 import { useState, useCallback } from 'react';
+import {
+  isConnected,
+  isAllowed,
+  setAllowed,
+  getPublicKey,
+  requestAccess,
+  signTransaction as freighterSignTransaction,
+} from '@stellar/freighter-api';
 
 /**
- * Safely call a Freighter API function.
- * If the extension is not installed or not ready, returns null instead of throwing.
+ * Safely call a Freighter API function used for CONNECTION checks only.
+ * Suppresses internal extension communication noise for read-only calls.
+ * DO NOT use this for signTransaction — that needs direct invocation.
  */
-async function safeFreighterCall(fn, ...args) {
+async function safeFreighterCheck(fn, ...args) {
   try {
-    const result = await fn(...args);
-    return result;
+    return await fn(...args);
   } catch (err) {
-    // Suppress internal extension communication errors (not actionable by user)
     const msg = err?.message || '';
     if (
       msg.includes('Could not establish connection') ||
@@ -17,6 +24,7 @@ async function safeFreighterCall(fn, ...args) {
       msg.includes('Unable to send message') ||
       msg.includes('Receiving end does not exist')
     ) {
+      // Extension not ready — return null silently
       return null;
     }
     throw err;
@@ -32,24 +40,21 @@ export function useWallet() {
     setConnecting(true);
     setError(null);
     try {
-      // Dynamically import to avoid issues when extension is not present
-      const freighter = await import('@stellar/freighter-api');
-
-      const installed = await safeFreighterCall(freighter.isConnected);
+      const installed = await safeFreighterCheck(isConnected);
       if (!installed) {
         throw new Error(
           'Freighter wallet not found. Please install it from https://freighter.app and refresh the page.'
         );
       }
 
-      const allowed = await safeFreighterCall(freighter.isAllowed);
+      const allowed = await safeFreighterCheck(isAllowed);
       if (!allowed) {
-        await safeFreighterCall(freighter.setAllowed);
+        await safeFreighterCheck(setAllowed);
       }
 
-      let address = await safeFreighterCall(freighter.getPublicKey);
+      let address = await safeFreighterCheck(getPublicKey);
       if (!address) {
-        address = await safeFreighterCall(freighter.requestAccess);
+        address = await safeFreighterCheck(requestAccess);
       }
 
       if (!address) {
@@ -72,12 +77,28 @@ export function useWallet() {
     setError(null);
   }, []);
 
+  /**
+   * Sign a transaction via Freighter popup.
+   * Called DIRECTLY without any error suppression wrapper so the Freighter
+   * popup can open and the user can confirm/reject the transaction.
+   */
   const signTransaction = useCallback(async (xdr, opts) => {
-    const freighter = await import('@stellar/freighter-api');
-    const signed = await safeFreighterCall(freighter.signTransaction, xdr, opts);
-    if (!signed) {
-      throw new Error('Transaction signing was cancelled or extension is unavailable.');
+    let signed;
+    try {
+      signed = await freighterSignTransaction(xdr, opts);
+    } catch (err) {
+      const msg = err?.message || '';
+      // User explicitly rejected in Freighter popup
+      if (msg.includes('User declined') || msg.includes('rejected')) {
+        throw new Error('Transaction rejected by user in wallet.');
+      }
+      throw err;
     }
+
+    if (!signed) {
+      throw new Error('Transaction signing was cancelled.');
+    }
+    // Some versions of Freighter return an object with error property
     if (typeof signed === 'object' && signed.error) {
       throw new Error(signed.error);
     }
