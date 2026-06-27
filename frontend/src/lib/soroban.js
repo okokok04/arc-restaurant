@@ -40,21 +40,21 @@ function getContract() {
  * Simulate a read-only contract call (no wallet signature required).
  */
 export async function simulateContractCall(functionName, args = []) {
-  const account = await server.getAccount(
-    'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF'
-  ).catch(() => null);
+  const DUMMY_KEY = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF';
 
-  const source =
-    account ||
-    (await server.getLatestLedger()).then(() => ({
-      accountId: () => 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',
+  let acct;
+  try {
+    acct = await server.getAccount(DUMMY_KEY);
+  } catch {
+    // Fallback: construct a minimal account-like object
+    acct = {
+      accountId: () => DUMMY_KEY,
       sequenceNumber: () => '0',
-    }));
-
-  const acct =
-    typeof source.then === 'function'
-      ? await source
-      : source;
+      incrementSequenceNumber: () => {},
+      sequence: '0',
+      account_id: DUMMY_KEY,
+    };
+  }
 
   const contract = getContract();
   const scArgs = args.map(scValFromSpec);

@@ -37,16 +37,18 @@ jobs:
           ls -la "$WASM"
           for attempt in 1 2 3; do
             echo "Deploy attempt $attempt..."
-            if CONTRACT_ID=$(soroban contract deploy \
+            OUTPUT=$(soroban contract deploy \
               --wasm "$WASM" \
               --source deployer \
-              --network testnet 2>&1); then
+              --network testnet 2>&1) || true
+            echo "$OUTPUT"
+            CONTRACT_ID=$(echo "$OUTPUT" | grep -oE 'C[A-Z2-7]{55}' | tail -1)
+            if [ -n "$CONTRACT_ID" ]; then
               echo "contract_id=$CONTRACT_ID" >> $GITHUB_OUTPUT
               echo "CONTRACT_ID=$CONTRACT_ID"
               exit 0
             fi
-            echo "$CONTRACT_ID"
-            sleep 10
+            sleep 15
           done
           exit 1
 

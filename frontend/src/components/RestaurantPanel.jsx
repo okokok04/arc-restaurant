@@ -16,9 +16,7 @@ import {
 import {
   CONTRACT_ID,
   isValidContractId,
-  CONTRACT_FUNCTIONS,
-  buildInitArgs,
-  buildPayArgs,
+  DEFAULT_TOKEN,
   MENU_ITEMS,
 } from '../lib/contract.js';
 
