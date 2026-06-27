@@ -61,7 +61,7 @@ jobs:
             --network testnet \
             -- init \
             --owner "$(soroban keys address deployer)" \
-            --name "Arc Bistro")
+            --name "Arc Nexus")
           echo "init_tx=$TX" >> $GITHUB_OUTPUT
 
       - name: Write deployment info
