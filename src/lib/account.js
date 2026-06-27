@@ -55,12 +55,26 @@ export function formatStellarError(err) {
   return { message: msg, needsFunding: false };
 }
 
+/**
+ * Check if a Stellar account exists and is funded on the network.
+ * A 404 from Horizon means the account is not funded — this is expected and handled silently.
+ * Includes a 5-second timeout to prevent hanging requests.
+ */
 export async function checkAccountExists(publicKey) {
+  if (!publicKey) return false;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
   try {
-    const res = await fetch(`${HORIZON_URL}/accounts/${publicKey}`);
-    return res.ok;
+    const res = await fetch(`${HORIZON_URL}/accounts/${publicKey}`, {
+      signal: controller.signal,
+    });
+    // 200 = funded, 404 = not funded (expected, not an error)
+    return res.status === 200;
   } catch {
+    // Network error, timeout, or abort — don't crash, assume unknown state
     return false;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
