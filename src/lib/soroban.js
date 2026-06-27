@@ -4,7 +4,6 @@ import {
   TransactionBuilder,
   nativeToScVal,
   scValToNative,
-  xdr,
   Address,
   BASE_FEE,
 } from '@stellar/stellar-sdk';

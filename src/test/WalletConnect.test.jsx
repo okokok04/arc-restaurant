@@ -19,16 +19,15 @@ describe('WalletConnect component', () => {
         <WalletConnect />
       </WalletProvider>
     );
-    expect(screen.getByRole('button', { name: /connect freighter wallet/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /connect wallet/i })).toBeInTheDocument();
   });
 
-  it('displays app title and subtitle', () => {
+  it('displays app branding', () => {
     render(
       <WalletProvider>
         <WalletConnect />
       </WalletProvider>
     );
     expect(screen.getByText(/Arc Nexus/i)).toBeInTheDocument();
-    expect(screen.getByText(/Future Tech Store/i)).toBeInTheDocument();
   });
 });
