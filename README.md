@@ -65,11 +65,11 @@ A production-ready **Stellar Soroban** restaurant payment application with walle
 ### 1. Clone & install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/arc-restaurant.git
+git clone https://github.com/okokok04/arc-restaurant.git
 cd arc-restaurant
 
-# Frontend
-cd frontend && npm install && cd ..
+# Install frontend dependencies (at root)
+npm install
 
 # Contract (Rust)
 rustup target add wasm32-unknown-unknown
@@ -79,8 +79,7 @@ cargo test --package restaurant-contract
 ### 2. Run frontend locally
 
 ```bash
-cd frontend
-cp .env.example .env   # optional overrides
+cp .env.example .env   # copy env config
 npm run dev
 ```
 
@@ -93,7 +92,7 @@ Open http://localhost:5173 — connect Freighter (Testnet), initialize restauran
 bash scripts/deploy.sh testnet
 ```
 
-Copy the printed `CONTRACT_ID` into `frontend/.env`:
+Copy the printed `CONTRACT_ID` into `.env`:
 
 ```
 VITE_CONTRACT_ID=C...
@@ -103,7 +102,6 @@ VITE_NETWORK=TESTNET
 ### 4. Deploy frontend (Vercel)
 
 ```bash
-cd frontend
 npx vercel --prod
 ```
 
@@ -143,23 +141,28 @@ Arc/
 │   └── src/
 │       ├── lib.rs            # RestaurantContract: init, pay, getters
 │       └── test.rs           # Unit tests
-├── src/                      # React + Vite dApp (moved to root)
+├── src/                      # React + Vite dApp (root level)
 │   ├── lib/
 │   │   ├── contract.js       # Contract ID, function names, arg builders
-│   │   └── soroban.js        # stellar-sdk integration layer
+│   │   ├── soroban.js        # @stellar/stellar-sdk integration layer
+│   │   └── account.js        # Freighter wallet helpers
 │   ├── components/
-│   │   ├── WalletConnect.jsx
-│   │   ├── RestaurantPanel.jsx
-│   │   └── EventStream.jsx
+│   │   ├── WalletConnect.jsx # Freighter wallet connect button
+│   │   ├── RestaurantPanel.jsx # init/pay UI + menu
+│   │   └── EventStream.jsx   # Live Soroban event poller
+│   ├── context/
+│   │   └── WalletContext.jsx # React context for wallet state
 │   └── hooks/
-│       ├── useWallet.js
-│       └── useEventStream.js
+│       ├── useWallet.js      # Freighter API hook
+│       └── useEventStream.js # RPC event polling hook
 ├── index.html                # Vite entry point
-├── package.json              # NPM dependencies
-├── vercel.json               # Vercel config
-├── scripts/deploy.sh         # Bash deploy script
-├── scripts/publish.ps1       # Windows publish script
-├── .github/workflows/ci.yml
+├── package.json              # NPM dependencies (react, @stellar/stellar-sdk)
+├── vite.config.js            # Vite + Vitest config
+├── vercel.json               # Vercel deployment config
+├── .env.example              # Environment variable template
+├── scripts/deploy.sh         # Contract deploy script
+├── Cargo.toml                # Rust workspace config
+├── .github/workflows/ci.yml  # CI/CD pipeline
 └── README.md
 ```
 
