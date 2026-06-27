@@ -45,7 +45,6 @@ export async function simulateContractCall(functionName, args = []) {
   try {
     acct = await server.getAccount(DUMMY_KEY);
   } catch {
-    // Fallback: construct a minimal account-like object
     acct = {
       accountId: () => DUMMY_KEY,
       sequenceNumber: () => '0',
@@ -74,21 +73,14 @@ export async function simulateContractCall(functionName, args = []) {
 }
 
 /**
- * Build, sign (via Freighter), and submit a contract invocation transaction.
+ * Preflight a write call — returns simulation result or throws with a clear message.
  */
-export async function invokeContract(functionName, args, publicKey, signTransaction) {
-  let account;
-  try {
-    account = await server.getAccount(publicKey);
-  } catch (err) {
-    const { message } = formatStellarError(err);
-    throw new Error(message);
-  }
-
+export async function simulateWriteCall(functionName, args, publicKey) {
+  const account = await server.getAccount(publicKey);
   const contract = getContract();
   const scArgs = args.map(scValFromSpec);
 
-  let tx = new TransactionBuilder(account, {
+  const tx = new TransactionBuilder(account, {
     fee: BASE_FEE,
     networkPassphrase: NETWORK_PASSPHRASE,
   })
@@ -101,29 +93,80 @@ export async function invokeContract(functionName, args, publicKey, signTransact
     const { message } = formatStellarError(new Error(sim.error || 'Simulation failed'));
     throw new Error(message || `Simulation failed for ${functionName}`);
   }
+  return sim;
+}
 
+/**
+ * Build, sign (via Freighter), and submit a contract invocation transaction.
+ */
+export async function invokeContract(functionName, args, publicKey, signTransaction, options = {}) {
+  const { onPhase } = options;
+
+  onPhase?.('loading-account');
+  let account;
   try {
-    tx = rpc.assembleTransaction(tx, sim).build();
+    account = await server.getAccount(publicKey);
   } catch (err) {
-    if (err.message.includes('Bad union switch')) {
+    const { message } = formatStellarError(err);
+    throw new Error(message);
+  }
+
+  const contract = getContract();
+  const scArgs = args.map(scValFromSpec);
+
+  const tx = new TransactionBuilder(account, {
+    fee: BASE_FEE,
+    networkPassphrase: NETWORK_PASSPHRASE,
+  })
+    .addOperation(contract.call(functionName, ...scArgs))
+    .setTimeout(30)
+    .build();
+
+  onPhase?.('simulating');
+  const sim = await server.simulateTransaction(tx);
+  if (rpc.Api.isSimulationError(sim)) {
+    const { message } = formatStellarError(new Error(sim.error || 'Simulation failed'));
+    throw new Error(message || `Simulation failed for ${functionName}`);
+  }
+
+  onPhase?.('preparing');
+  let preparedTx;
+  try {
+    preparedTx = rpc.assembleTransaction(tx, sim).build();
+  } catch (err) {
+    const msg = err?.message || String(err);
+    if (msg.includes('Bad union switch') || msg.includes('XDR') || msg.includes('union')) {
       console.warn('XDR Parsing warning in assembleTransaction - using manual assembly');
-      tx.setSorobanData(sim.transactionData);
-      tx.setFee(String(Number(sim.minResourceFee) + 10000));
-      tx = tx.build();
+      try {
+        const manualTx = new TransactionBuilder(account, {
+          fee: String(Number(sim.minResourceFee || 10000) + 10000),
+          networkPassphrase: NETWORK_PASSPHRASE,
+        })
+          .addOperation(contract.call(functionName, ...scArgs))
+          .setTimeout(30);
+        if (sim.transactionData) {
+          manualTx.setSorobanData(sim.transactionData);
+        }
+        preparedTx = manualTx.build();
+      } catch (manualErr) {
+        throw new Error(`Failed to prepare transaction (manual assembly fallback failed): ${manualErr.message}`);
+      }
     } else {
-      throw err;
+      throw new Error(`Failed to prepare transaction: ${msg}`);
     }
   }
 
-  const signedXdr = await signTransaction(tx.toXDR(), {
+  onPhase?.('awaiting-signature');
+  const signedXdr = await signTransaction(preparedTx.toXDR(), {
     networkPassphrase: NETWORK_PASSPHRASE,
-    accountToSign: publicKey,
+    address: publicKey,
   });
 
   if (!signedXdr) {
     throw new Error('Transaction signing was cancelled');
   }
 
+  onPhase?.('submitting');
   const signedTx = TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE);
   const result = await server.sendTransaction(signedTx);
 
@@ -131,6 +174,7 @@ export async function invokeContract(functionName, args, publicKey, signTransact
     throw new Error(result.errorResult?.toXDR('base64') || 'Transaction failed');
   }
 
+  onPhase?.('confirming');
   return pollTransaction(result.hash);
 }
 
@@ -146,10 +190,11 @@ async function pollTransaction(hash, maxAttempts = 30) {
       }
     } catch (err) {
       if (err.message.includes('Bad union switch')) {
-        console.warn('XDR Parsing warning in getTransaction - transaction likely successful');
         return { hash, status: 'SUCCESS', result: { status: 'SUCCESS' } };
       }
-      // Continue polling for other errors or pending state
+      if (err.message.includes('failed on-chain')) {
+        throw err;
+      }
     }
     await new Promise((r) => setTimeout(r, 2000));
   }
@@ -157,22 +202,24 @@ async function pollTransaction(hash, maxAttempts = 30) {
 }
 
 /** Call contract `init` — maps to RestaurantContract::init */
-export async function initRestaurant(owner, name, publicKey, signTransaction) {
+export async function initRestaurant(owner, name, publicKey, signTransaction, options) {
   return invokeContract(
     CONTRACT_FUNCTIONS.INIT,
     buildInitArgs(owner, name),
     publicKey,
-    signTransaction
+    signTransaction,
+    options
   );
 }
 
 /** Call contract `pay` — maps to RestaurantContract::pay */
-export async function payOrder(customer, tokenAddress, amount, orderId, publicKey, signTransaction) {
+export async function payOrder(customer, tokenAddress, amount, orderId, publicKey, signTransaction, options) {
   return invokeContract(
     CONTRACT_FUNCTIONS.PAY,
     buildPayArgs(customer, tokenAddress, amount, orderId),
     publicKey,
-    signTransaction
+    signTransaction,
+    options
   );
 }
 
@@ -213,7 +260,6 @@ export async function fetchContractEvents(startLedger = null) {
     latest = await server.getLatestLedger();
   } catch (err) {
     if (err.message.includes('Bad union switch')) {
-      console.warn('XDR Parsing warning in getLatestLedger - skipping event update');
       return [];
     }
     throw err;
@@ -237,28 +283,28 @@ export async function fetchContractEvents(startLedger = null) {
     });
 
     return (response.events || []).map((evt) => ({
-    id: evt.id || `${evt.ledger}-${evt.txHash}`,
-    type: evt.type,
-    ledger: evt.ledger,
-    txHash: evt.txHash,
-    contractId: evt.contractId?.toString?.() ?? evt.contractId,
-    topics: evt.topic?.map((t) => {
-      try {
-        return scValToNative(t);
-      } catch {
-        return t;
-      }
-    }) ?? [],
-    value: evt.value
-      ? (() => {
-          try {
-            return scValToNative(evt.value);
-          } catch {
-            return evt.value;
-          }
-        })()
-      : null,
-    timestamp: evt.ledgerClosedAt || null,
+      id: evt.id || `${evt.ledger}-${evt.txHash}`,
+      type: evt.type,
+      ledger: evt.ledger,
+      txHash: evt.txHash,
+      contractId: evt.contractId?.toString?.() ?? evt.contractId,
+      topics: evt.topic?.map((t) => {
+        try {
+          return scValToNative(t);
+        } catch {
+          return t;
+        }
+      }) ?? [],
+      value: evt.value
+        ? (() => {
+            try {
+              return scValToNative(evt.value);
+            } catch {
+              return evt.value;
+            }
+          })()
+        : null,
+      timestamp: evt.ledgerClosedAt || null,
     }));
   } catch (err) {
     console.error('Error fetching events:', err);

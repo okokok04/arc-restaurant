@@ -48,8 +48,38 @@ export function formatStellarError(err) {
     };
   }
 
-  if (/simulation failed|operation failed/i.test(msg)) {
-    return { message: msg, needsFunding: false };
+  if (/insufficient|Error\(Contract, #3\)|balance too low|underflow/i.test(msg)) {
+    return {
+      message:
+        'Insufficient XLM balance for this purchase. Fund your testnet wallet or pick a cheaper item.',
+      needsFunding: false,
+    };
+  }
+
+  if (/freighter must be on testnet|network passphrase/i.test(msg)) {
+    return {
+      message: msg,
+      needsFunding: false,
+    };
+  }
+
+  if (/rejected in freighter|signing was cancelled/i.test(msg)) {
+    return {
+      message: msg,
+      needsFunding: false,
+    };
+  }
+
+  if (/account entry is missing/i.test(msg)) {
+    return {
+      message:
+        'Your account is not ready for Soroban payments yet. Wait 5–10 seconds after funding, then retry.',
+      needsFunding: false,
+    };
+  }
+
+  if (/simulation failed|operation failed|HostError/i.test(msg)) {
+    return { message: msg.length > 200 ? `${msg.slice(0, 200)}…` : msg, needsFunding: false };
   }
 
   return { message: msg, needsFunding: false };

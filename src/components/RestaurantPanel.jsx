@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWalletContext } from '../context/WalletContext.jsx';
 import {
   initRestaurant,
   payOrder,
   getContractBalance,
   getOrderCount,
+  simulateWriteCall,
 } from '../lib/soroban.js';
 import {
   checkAccountExists,
@@ -19,9 +20,10 @@ import {
   DEFAULT_TOKEN,
   MENU_ITEMS,
 } from '../lib/contract.js';
+import PurchaseConfirmModal from './PurchaseConfirmModal.jsx';
 
 export default function RestaurantPanel() {
-  const { publicKey, connected, signTransaction } = useWalletContext();
+  const { publicKey, connected, connecting, connect, signTransaction } = useWalletContext();
   const [restaurantName, setRestaurantName] = useState('Arc Bistro');
   const [balance, setBalance] = useState(null);
   const [orderCount, setOrderCount] = useState(null);
@@ -33,6 +35,15 @@ export default function RestaurantPanel() {
   const [error, setError] = useState(null);
   const [needsFunding, setNeedsFunding] = useState(false);
   const [lastTxHash, setLastTxHash] = useState(null);
+  const [pendingItem, setPendingItem] = useState(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [payPhase, setPayPhase] = useState('confirm');
+  const [modalError, setModalError] = useState(null);
+  const purchaseStatusRef = useRef(null);
+
+  const scrollToPurchaseStatus = useCallback(() => {
+    purchaseStatusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, []);
 
   const refreshStats = useCallback(async () => {
     try {
@@ -64,6 +75,17 @@ export default function RestaurantPanel() {
   }, [publicKey]);
 
   useEffect(() => {
+    if (!confirmOpen) {
+      document.body.style.overflow = '';
+      return undefined;
+    }
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [confirmOpen]);
+
+  useEffect(() => {
     refreshStats();
     const id = setInterval(refreshStats, 10000);
     return () => clearInterval(id);
@@ -85,7 +107,7 @@ export default function RestaurantPanel() {
     setMessage(null);
     try {
       const hash = await fundTestnetAccount(publicKey);
-      await new Promise((r) => setTimeout(r, 2000));
+      await new Promise((r) => setTimeout(r, 5000));
       const exists = await checkAccountExists(publicKey);
       if (!exists) {
         throw new Error('Funding submitted but account not ready yet. Wait a few seconds and retry.');
@@ -125,55 +147,124 @@ export default function RestaurantPanel() {
       setLastTxHash(result.hash);
       setMessage(`Restaurant initialized! Tx: ${result.hash.slice(0, 16)}…`);
       await refreshStats();
+      scrollToPurchaseStatus();
     } catch (err) {
       const { message: msg, needsFunding: nf } = formatStellarError(err);
       setError(msg);
       setNeedsFunding(nf);
+      scrollToPurchaseStatus();
     } finally {
       setLoading(false);
       setAction(null);
     }
   };
 
-  const handlePay = async (item) => {
-    if (!connected || !publicKey) {
-      setError('Connect your Freighter wallet first');
-      return;
+  const handlePay = (item) => {
+    setError(null);
+    setMessage(null);
+    setPendingItem(item);
+    setModalError(null);
+    setPayPhase('confirm');
+    setConfirmOpen(true);
+  };
+
+  const handleModalConnect = async () => {
+    try {
+      await connect();
+    } catch (err) {
+      setModalError(err?.message || 'Failed to connect Freighter wallet.');
     }
-    const funded = await checkFunding();
-    if (!funded) {
-      setNeedsFunding(true);
-      setError('Fund your testnet account first using the button below.');
-      return;
-    }
+  };
+
+  const executePay = async () => {
+    const item = pendingItem;
+    if (!item || !publicKey) return;
+
     setLoading(true);
     setAction(`pay-${item.id}`);
     setError(null);
     setMessage(null);
+    setModalError(null);
+    setPayPhase('simulating');
+    scrollToPurchaseStatus();
+
     try {
+      if (!connected || !publicKey) {
+        throw new Error('Connect your Freighter wallet first (button top-right).');
+      }
+
+      const funded = await checkFunding();
+      if (!funded) {
+        setNeedsFunding(true);
+        throw new Error('Fund your testnet account first, wait ~5 seconds, then retry.');
+      }
+
+      await simulateWriteCall(
+        'pay',
+        [
+          { address: publicKey },
+          { address: DEFAULT_TOKEN },
+          { i128: item.price.toString() },
+          { u64: item.id.toString() },
+        ],
+        publicKey
+      );
+
       const result = await payOrder(
         publicKey,
         DEFAULT_TOKEN,
         item.price,
         item.id,
         publicKey,
-        signTransaction
+        signTransaction,
+        {
+          onPhase: (phase) => setPayPhase(phase),
+        }
       );
+
+      setConfirmOpen(false);
+      setPendingItem(null);
+      setModalError(null);
+      setPayPhase('confirm');
       setLastTxHash(result.hash);
       setMessage(`Paid for ${item.name}! Tx: ${result.hash.slice(0, 16)}…`);
       await refreshStats();
     } catch (err) {
       console.error('Payment error:', err);
       const { message: msg, needsFunding: nf } = formatStellarError(err);
-      setError(msg || 'Payment simulation failed. Ensure restaurant is initialized.');
+      const display = msg || 'Payment failed. Check Freighter is on Testnet and try again.';
+      setModalError(display);
+      setError(display);
       setNeedsFunding(nf);
+      setPayPhase('confirm');
     } finally {
       setLoading(false);
       setAction(null);
     }
   };
 
-  const actionsDisabled = loading || !connected || needsFunding || checkingAccount || !isValidContractId(CONTRACT_ID);
+  const cancelPay = () => {
+    if (loading) return;
+    setConfirmOpen(false);
+    setPendingItem(null);
+    setModalError(null);
+    setPayPhase('confirm');
+  };
+
+  const purchaseBlockReason = !isValidContractId(CONTRACT_ID)
+    ? null
+    : !connected
+      ? 'Connect Freighter wallet (top-right) to purchase.'
+      : checkingAccount
+        ? 'Checking testnet account…'
+        : needsFunding
+          ? 'Fund your testnet wallet before purchasing.'
+          : loading && action?.startsWith('pay-')
+            ? 'Processing payment — confirm in Freighter if prompted.'
+            : null;
+
+  const initDisabled = loading;
+  const payDisabled = loading;
 
   if (!isValidContractId(CONTRACT_ID)) {
     return (
@@ -257,29 +348,6 @@ export default function RestaurantPanel() {
         </div>
       )}
 
-      {error && !needsFunding && (
-        <div className="alert alert-error" role="alert">
-          {error}
-        </div>
-      )}
-      {message && (
-        <div className="alert alert-success" role="status">
-          {message}
-        </div>
-      )}
-      {lastTxHash && typeof lastTxHash === 'string' && (
-        <p className="tx-hash">
-          Last tx:{' '}
-          <a
-            href={`https://stellar.expert/explorer/testnet/tx/${lastTxHash}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {lastTxHash.slice(0, 20)}…
-          </a>
-        </p>
-      )}
-
       <div className="init-section">
         <h3>Launch Nexus Store</h3>
         <p className="hint">Authorize store instance on-chain: <code>init(owner, name)</code></p>
@@ -295,7 +363,7 @@ export default function RestaurantPanel() {
             type="button"
             className="btn btn-secondary"
             onClick={handleInit}
-            disabled={actionsDisabled}
+            disabled={initDisabled}
           >
             {action === 'init' ? (
               <>
@@ -308,9 +376,40 @@ export default function RestaurantPanel() {
         </div>
       </div>
 
-      <div className="menu-section">
+      <div className="menu-section" id="purchase-section">
         <h3>Hardware Catalog — Pay via Soroban</h3>
         <p className="hint">Transaction protocol: <code>pay(customer, token, amount, order_id)</code></p>
+
+        <div ref={purchaseStatusRef} className="purchase-status">
+          {purchaseBlockReason && (
+            <div className="alert alert-info" role="status">
+              {purchaseBlockReason}
+            </div>
+          )}
+          {error && (
+            <div className="alert alert-error" role="alert">
+              {error}
+            </div>
+          )}
+          {message && (
+            <div className="alert alert-success" role="status">
+              {message}
+            </div>
+          )}
+          {lastTxHash && typeof lastTxHash === 'string' && (
+            <p className="tx-hash">
+              Last tx:{' '}
+              <a
+                href={`https://stellar.expert/explorer/testnet/tx/${lastTxHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {lastTxHash.slice(0, 20)}…
+              </a>
+            </p>
+          )}
+        </div>
+
         <div className="menu-grid">
           {MENU_ITEMS.map((item) => (
             <article key={item.id} className="menu-card">
@@ -321,7 +420,8 @@ export default function RestaurantPanel() {
                 type="button"
                 className="btn btn-primary btn-block"
                 onClick={() => handlePay(item)}
-                disabled={actionsDisabled}
+                disabled={payDisabled}
+                aria-busy={action === `pay-${item.id}`}
               >
                 {action === `pay-${item.id}` ? (
                   <>
@@ -335,6 +435,19 @@ export default function RestaurantPanel() {
           ))}
         </div>
       </div>
+
+      <PurchaseConfirmModal
+        item={pendingItem}
+        open={confirmOpen}
+        onConfirm={executePay}
+        onCancel={cancelPay}
+        onConnect={handleModalConnect}
+        connected={connected}
+        connecting={connecting}
+        confirming={loading && action?.startsWith('pay-')}
+        phase={payPhase}
+        error={modalError}
+      />
     </section>
   );
 }
