@@ -1,4 +1,4 @@
-/** Deployed RestaurantContract on Stellar Testnet — set via VITE_CONTRACT_ID */
+/** Arc Nexus Store Configuration */
 export const CONTRACT_ID = (import.meta.env.VITE_CONTRACT_ID || '').trim();
 
 /** Stellar contract IDs are 56 chars: C + 55 base32 chars */
@@ -26,7 +26,7 @@ export const HORIZON_URL =
 /** Native XLM Stellar Asset Contract on testnet */
 export const DEFAULT_TOKEN =
   import.meta.env.VITE_TOKEN_ADDRESS ||
-  'CDLZFC3SYJYDZT7K7VZ75HMSZY47MXAEQHHDYOBLHNDHXV4ENZXMF';
+  'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
 
 /** Contract function names — must match Rust #[contractimpl] methods */
 export const CONTRACT_FUNCTIONS = {
@@ -56,8 +56,8 @@ export function buildPayArgs(customer, tokenAddress, amount, orderId) {
 }
 
 export const MENU_ITEMS = [
-  { id: 1, name: 'Stellar Burger', price: 2_500_000, emoji: '🍔' },
-  { id: 2, name: 'Lumen Latte', price: 1_500_000, emoji: '☕' },
-  { id: 3, name: 'Soroban Salad', price: 3_000_000, emoji: '🥗' },
-  { id: 4, name: 'Freighter Fries', price: 1_000_000, emoji: '🍟' },
+  { id: 1, name: 'Neural Link Gen-S', price: 5000000, emoji: '🧠', desc: 'Direct brain-to-web interface' },
+  { id: 2, name: 'Quantum Watch', price: 12000000, emoji: '⌚', desc: 'Syncs with stellar time protocol' },
+  { id: 3, name: 'Holo-Glasses v4', price: 8500000, emoji: '👓', desc: 'AR overlay for real-time finance' },
+  { id: 4, name: 'Cyber Drone', price: 15000000, emoji: '🛸', desc: 'Autonomous delivery unit' },
 ];

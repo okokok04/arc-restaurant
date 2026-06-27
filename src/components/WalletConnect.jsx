@@ -11,11 +11,7 @@ export default function WalletConnect() {
   return (
     <header className="wallet-header">
       <div className="brand">
-        <span className="brand-icon">🍽️</span>
-        <div>
-          <h1>Arc Restaurant</h1>
-          <p className="subtitle">Soroban payments on Stellar</p>
-        </div>
+        <h1>ARC NEXUS <span style={{fontSize: '0.6em', opacity: 0.5}}>v2.0</span></h1>
       </div>
 
       <div className="wallet-actions">
@@ -46,7 +42,7 @@ export default function WalletConnect() {
                 <span className="spinner" /> Connecting…
               </>
             ) : (
-              'Connect Freighter Wallet'
+              'Connect Wallet'
             )}
           </button>
         )}
@@ -54,4 +50,3 @@ export default function WalletConnect() {
     </header>
   );
 }
-

@@ -49,7 +49,7 @@ export default function EventStream() {
             <pre className="event-data">
               {JSON.stringify(
                 { topics: evt.topics, value: evt.value },
-                null,
+                (key, value) => typeof value === 'bigint' ? value.toString() : value,
                 2
               )}
             </pre>

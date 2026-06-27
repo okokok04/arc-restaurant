@@ -36,11 +36,15 @@ export default function RestaurantPanel() {
 
   const refreshStats = useCallback(async () => {
     try {
-      const [bal, count] = await Promise.all([getContractBalance(), getOrderCount()]);
-      setBalance(bal);
-      setOrderCount(count);
-    } catch {
-      // Read-only stats may fail if contract not initialized
+      const bal = await getContractBalance();
+      const count = await getOrderCount();
+      
+      // Only update if we get valid numbers back
+      if (typeof bal === 'number') setBalance(bal);
+      if (typeof count === 'number') setOrderCount(count);
+    } catch (err) {
+      console.warn('Refresh stats failed:', err.message);
+      // Keep existing stats, don't crash
     }
   }, []);
 
@@ -187,7 +191,7 @@ export default function RestaurantPanel() {
   return (
     <section className="panel restaurant-panel">
       <div className="panel-header">
-        <h2>Restaurant Dashboard</h2>
+        <h2>Nexus Store Dashboard</h2>
         <span className="badge-network">Stellar Testnet</span>
       </div>
       <p className="contract-id">
@@ -196,14 +200,14 @@ export default function RestaurantPanel() {
 
       <div className="stats-grid">
         <div className="stat-card">
-          <span className="stat-label">Contract Balance</span>
+          <span className="stat-label">Store Revenue</span>
           <span className="stat-value">
-            {balance !== null ? `${(balance / 1_000_000).toFixed(2)} XLM` : '—'}
+            {typeof balance === 'number' ? `${(balance / 1_000_000).toFixed(2)} XLM` : '—'}
           </span>
         </div>
         <div className="stat-card">
-          <span className="stat-label">Total Orders</span>
-          <span className="stat-value">{orderCount ?? '—'}</span>
+          <span className="stat-label">Units Sold</span>
+          <span className="stat-value">{typeof orderCount === 'number' ? orderCount : '—'}</span>
         </div>
       </div>
 
@@ -263,7 +267,7 @@ export default function RestaurantPanel() {
           {message}
         </div>
       )}
-      {lastTxHash && (
+      {lastTxHash && typeof lastTxHash === 'string' && (
         <p className="tx-hash">
           Last tx:{' '}
           <a
@@ -277,8 +281,8 @@ export default function RestaurantPanel() {
       )}
 
       <div className="init-section">
-        <h3>Initialize Restaurant</h3>
-        <p className="hint">Calls contract function: <code>init(owner, name)</code></p>
+        <h3>Launch Nexus Store</h3>
+        <p className="hint">Authorize store instance on-chain: <code>init(owner, name)</code></p>
         <div className="form-row">
           <input
             type="text"
@@ -305,8 +309,8 @@ export default function RestaurantPanel() {
       </div>
 
       <div className="menu-section">
-        <h3>Menu — Pay with Soroban</h3>
-        <p className="hint">Calls contract function: <code>pay(customer, token, amount, order_id)</code></p>
+        <h3>Hardware Catalog — Pay via Soroban</h3>
+        <p className="hint">Transaction protocol: <code>pay(customer, token, amount, order_id)</code></p>
         <div className="menu-grid">
           {MENU_ITEMS.map((item) => (
             <article key={item.id} className="menu-card">
@@ -321,10 +325,10 @@ export default function RestaurantPanel() {
               >
                 {action === `pay-${item.id}` ? (
                   <>
-                    <span className="spinner" /> Paying…
+                    <span className="spinner" /> Transacting…
                   </>
                 ) : (
-                  'Pay Now'
+                  'Purchase'
                 )}
               </button>
             </article>

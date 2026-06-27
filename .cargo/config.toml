@@ -1,2 +1,2 @@
-[target.wasm32-unknown-unknown]
-rustflags = ["-C", "target-cpu=mvp", "-C", "target-feature=-reference-types,-sign-ext,-bulk-memory,-mutable-globals,-multivalue,-tail-call"]
+[build]
+rustflags = ["-C", "target-feature=-reference-types"]
