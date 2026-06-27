@@ -82,4 +82,17 @@ test result: ok. 4 passed; 0 failed; 0 ignored; finished in 0.03s
 ```
 
 ---
-*Dự án được thực hiện bởi sự kết hợp giữa công nghệ Stellar và tư duy thiết kế tương lai.*
+
+## ✅ Submission Checklist Tracking
+- [x] **README with complete documentation**
+- [x] **Minimum 10+ meaningful commits**
+- [x] **Live demo link**: [https://arc-nexus-tech.vercel.app/](https://arc-nexus-tech.vercel.app/)
+- [x] **Contract deployment address**: `CALNBNJF7HWOU2T4H33JSOWOZX57NPAHEVENJKDFEWE7363PKF62HCAI`
+- [x] **Test output with 3+ passing tests** (4/4 Passed)
+- [x] **CI/CD pipeline configuration** (GitHub Actions ready)
+- [x] **Mobile responsive UI** (Optimized via CSS Grid/Flexbox)
+- [x] **Public GitHub repository**: [https://github.com/okokok04/arc-restaurant](https://github.com/okokok04/arc-restaurant)
+- [ ] **Demo video link** (User to record 1-2 mins and add link here)
+
+---
+*Built with ❤️ for the Stellar community.*
