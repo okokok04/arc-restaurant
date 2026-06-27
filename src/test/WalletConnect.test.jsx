@@ -28,7 +28,7 @@ describe('WalletConnect component', () => {
         <WalletConnect />
       </WalletProvider>
     );
-    expect(screen.getByText('Arc Restaurant')).toBeInTheDocument();
-    expect(screen.getByText(/soroban payments/i)).toBeInTheDocument();
+    expect(screen.getByText(/Arc Nexus/i)).toBeInTheDocument();
+    expect(screen.getByText(/Future Tech Store/i)).toBeInTheDocument();
   });
 });

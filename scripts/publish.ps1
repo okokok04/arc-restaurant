@@ -1,4 +1,4 @@
-# Publish Arc Restaurant to GitHub + Vercel
+# Publish Arc Nexus to GitHub + Vercel
 # Usage: .\scripts\publish.ps1 -GitHubUser YOUR_USERNAME
 
 param(
